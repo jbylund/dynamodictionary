@@ -8,5 +8,5 @@ setup(
     package_dir={'dynamodict': 'src/dynamodict'},
     packages=['dynamodict'],
     url="https://github.com/jbylund/dynamodictionary",
-    version='0.0.2',
+    version='0.0.3',
 )
