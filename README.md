@@ -16,4 +16,19 @@ In [5]: mytable['cheeses'] = ['applewood', 'brie', 'cheddar', 'duddleswell']
 
 In [6]: print mytable['cheeses']
 ['applewood', 'brie', 'cheddar', 'duddleswell']
+
+In [7]: for key in footable:
+   ...:     print key
+   ...:
+cheeses
+monty
+
+In [8]: print 'cheeses' in footable
+True
+
+In [9]: print 'watery tart' in footable
+False
+
+In [10]: print len(footable)
+2
 ```
