@@ -23,6 +23,7 @@ def deserialize(obj):
 
 class DynamoDictionary(object):
     """a class that acts a little like a dictionary that uses dynamo as a backing"""
+    empty_sentinel = object()
 
     def __init__(self, table_name, read_units=1, write_units=1):
         self.table_name = table_name
@@ -89,13 +90,20 @@ class DynamoDictionary(object):
         except KeyError:
             return default
 
-    def pop(self, key, default=None):
+    def pop(self, key, default=empty_sentinel):
         """D.pop(k[,d]) -> v, remove specified key and return the corresponding value.\nIf key is not found, d is returned if given, otherwise KeyError is raised"""
         deleted = self.table.delete_item(
-            Key={'key': serialize(key)}, ReturnValues='ALL_OLD')
+            Key={'key': serialize(key)},
+            ReturnValues='ALL_OLD'
+        )
         if 'Attributes' not in deleted:
-            return default
-        return deleted['Attributes']['value']
+            if default is not self.empty_sentinel:
+                return default
+            else:
+                raise KeyError(key)
+        return deserialize(
+            deleted['Attributes']['value']
+        )
 
     def iteritems(self):
         """D.iteritems() -> an iterator over the (key, value) items of D"""
@@ -162,6 +170,14 @@ class DynamoDictionary(object):
 def main():
     d = DynamoDictionary("footable")
     d['foo'] = 'bar'
+    print len(d)
+    print d.items()
+    print d.iteritems()
+    print d.itervalues()
+    for val in d.itervalues():
+        print val
+    print d['foo']
+    print d.pop('foo')
     print len(d)
 
 if "__main__" == __name__:
