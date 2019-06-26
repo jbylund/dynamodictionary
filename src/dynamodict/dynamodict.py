@@ -166,6 +166,37 @@ class DynamoDictionary(object):
             count += 1
         return count
 
+    def clear(self):
+        """D.clear() -> None.  Remove all items from D."""
+        # do a batch get an then batch write deleting in chunks of 25
+        chunk = []
+        for key in self.iterkeys():
+            chunk.append(key)
+            if 25 <= len(chunk):
+                self.multi_delete(chunk)
+                chunk[:] = []
+        self.multi_delete(chunk)
+
+    def multi_delete(self, keys):
+        if not keys:
+            return
+        # todo add retries and handle unprocessed items
+        res = self.client.batch_write_item(
+            RequestItems={
+                self.table_name: [
+                    {
+                        "DeleteRequest": {
+                            "Key": {
+                                "key": {
+                                    "S": serialize(key)
+                                }
+                            }
+                        }
+                    } for key in keys
+                ]
+            }
+        )
+
 
 def main():
     d = DynamoDictionary("footable")
@@ -179,6 +210,7 @@ def main():
     print d['foo']
     print d.pop('foo')
     print len(d)
+
 
 if "__main__" == __name__:
     main()
