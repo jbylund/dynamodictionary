@@ -6,8 +6,11 @@ from string import ascii_lowercase
 import dynamodict
 
 random.seed(0)
+
+
 def randstr():
     return "".join(random.choice(ascii_lowercase) for _ in range(20))
+
 
 class TestDynamodictionary(unittest.TestCase):
     @classmethod
@@ -29,8 +32,8 @@ class TestDynamodictionary(unittest.TestCase):
 
     def test_coverage(self):
         dynamodict_methods = [
-            x 
-            for x in dir(self.mytable) 
+            x
+            for x in dir(self.mytable)
             if hasattr(getattr(self.mytable, x), '__call__') and not x.startswith('_')
         ]
         test_methods = [x[5:] for x in dir(self) if x.startswith('test_')]
