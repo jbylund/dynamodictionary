@@ -1,7 +1,11 @@
 .PHONY: upload test
 
-upload: increment_version test
-	python setup.py sdist upload -r pypi
+upload: lint increment_version test
+	find ./dist/ -delete
+	python setup.py sdist bdist_wheel
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+	twine upload dist/*
+	/bin/rm -rvf dynamodictionary.egg-info/ dist/ build/
 
 increment_version: test
 	true

@@ -36,7 +36,7 @@ class DynamoDictionary(object):
             self.create_table(read_units=read_units, write_units=write_units)
             self.table.wait_until_exists()
 
-    def create_table(self, read_units=1, write_units=1):
+    def create_table(self, read_units=10, write_units=5):
         """create a table in case it doesn't exist"""
         self.client.create_table(
             TableName=self.table_name,
@@ -57,6 +57,10 @@ class DynamoDictionary(object):
                 'WriteCapacityUnits': write_units
             }
         )
+
+    def drop_table(self):
+        """drop table"""
+        self.client.delete_table(TableName=self.table_name)
 
     def __getitem__(self, key):
         """x.__getitem__(y) <==> x[y]"""
@@ -181,21 +185,20 @@ class DynamoDictionary(object):
         if not keys:
             return
         # todo add retries and handle unprocessed items
-        res = self.client.batch_write_item(
-            RequestItems={
-                self.table_name: [
-                    {
-                        "DeleteRequest": {
-                            "Key": {
-                                "key": {
-                                    "S": serialize(key)
-                                }
+        request_items = {
+            self.table_name: [
+                {
+                    "DeleteRequest": {
+                        "Key": {
+                            "key": {
+                                "S": serialize(key)
                             }
                         }
-                    } for key in keys
-                ]
-            }
-        )
+                    }
+                } for key in keys
+            ]
+        }
+        res = self.client.batch_write_item(RequestItems=request_items)
 
 
 def main():

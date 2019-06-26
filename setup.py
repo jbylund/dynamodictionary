@@ -1,6 +1,6 @@
-from distutils.core import setup
+import setuptools
 
-setup(
+setuptools.setup(
     author_email='joseph.bylund@gmail.com',
     author='Joe Bylund',
     description='Dictionary like thing built on top of dynamodb',
@@ -8,5 +8,5 @@ setup(
     package_dir={'dynamodict': 'src/dynamodict'},
     packages=['dynamodict'],
     url="https://github.com/jbylund/dynamodictionary",
-    version='0.0.8',
+    version='0.0.11',
 )

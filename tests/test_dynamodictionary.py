@@ -53,6 +53,9 @@ class TestDynamodictionary(unittest.TestCase):
     def test_create_table(self):
         pass
 
+    def test_drop_table(self):
+        pass
+
     def test_get(self):
         self.mytable['foo'] = 'bar'
         assert self.mytable.get('foo') == 'bar'
