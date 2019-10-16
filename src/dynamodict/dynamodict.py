@@ -20,41 +20,57 @@ def serialize(obj):
 def deserialize(obj):
     return cbor2.loads(base64.b64decode(obj))
 
+def is_permission_error(oops):
+    if getattr(oops, 'response', {}).get('Error', {}).get('Code') == 'AccessDeniedException':
+        return {
+            'user': oops.response['Error']['Message'].split()[1].partition('/')[-1],
+            'action': oops.operation_name,
+        }
+    return False
+
+class PermissionError(Exception):
+    pass
 
 class DynamoDictionary(object):
     """a class that acts a little like a dictionary that uses dynamo as a backing"""
     empty_sentinel = object()
+    default_read_units = 25 // 2
+    default_write_units = 25 // 2
 
-    def __init__(self, table_name, read_units=1, write_units=1):
+    def __init__(self, table_name, read_units=None, write_units=None):
         self.table_name = table_name
         self.client = boto3.client('dynamodb', region_name='us-east-1')
         self.conn = boto3.resource('dynamodb', region_name='us-east-1')
         self.table = self.conn.Table(self.table_name)
         try:
             self.table.get_item(Key={'key': "test"})
-        except botocore.exceptions.ClientError:
+        except botocore.exceptions.ClientError as oops:
+            perm_error = is_permission_error(oops)
+            if perm_error:
+                raise PermissionError(perm_error)
+            # check if it's a table does not exist error
             self.create_table(read_units=read_units, write_units=write_units)
             self.table.wait_until_exists()
 
-    def create_table(self, read_units=10, write_units=5):
+    def create_table(self, read_units=None, write_units=None):
         """create a table in case it doesn't exist"""
         self.client.create_table(
             TableName=self.table_name,
             AttributeDefinitions=[
                 {
                     'AttributeName': 'key',
-                    'AttributeType': 'S'
+                    'AttributeType': 'S',
                 }
             ],
             KeySchema=[
                 {
                     'AttributeName': 'key',
-                    'KeyType': 'HASH'
+                    'KeyType': 'HASH',
                 }
             ],
             ProvisionedThroughput={
-                'ReadCapacityUnits': read_units,
-                'WriteCapacityUnits': write_units
+                'ReadCapacityUnits': read_units or self.default_read_units,
+                'WriteCapacityUnits': write_units or self.default_write_units,
             }
         )
 
@@ -78,8 +94,10 @@ class DynamoDictionary(object):
                 self.table.put_item(Item={'key': skey, 'value': sval})
                 break
             except botocore.exceptions.ClientError as oops:
-                if oops.response['Error'][
-                        'Code'] != 'ProvisionedThroughputExceededException':
+                if oops.response['Error']['Code'] != 'ProvisionedThroughputExceededException':
+                    perm_error = is_permission_error(oops)
+                    if perm_error:
+                        raise PermissionError(perm_error)
                     raise
                 else:
                     print >> sys.stderr, "Over rate limit, backing off!"
@@ -96,10 +114,16 @@ class DynamoDictionary(object):
 
     def pop(self, key, default=empty_sentinel):
         """D.pop(k[,d]) -> v, remove specified key and return the corresponding value.\nIf key is not found, d is returned if given, otherwise KeyError is raised"""
-        deleted = self.table.delete_item(
-            Key={'key': serialize(key)},
-            ReturnValues='ALL_OLD'
-        )
+        try:
+            deleted = self.table.delete_item(
+                Key={'key': serialize(key)},
+                ReturnValues='ALL_OLD'
+            )
+        except botocore.exceptions.ClientError as oops:
+            perm_error = is_permission_error(oops)
+            if perm_error:
+                raise PermissionError(perm_error)
+            raise
         if 'Attributes' not in deleted:
             if default is not self.empty_sentinel:
                 return default
@@ -119,9 +143,15 @@ class DynamoDictionary(object):
             }
             if start_key:
                 kwargs['ExclusiveStartKey'] = start_key
-            response = self.table.scan(
-                **kwargs
-            )
+            try:
+                response = self.table.scan(
+                    **kwargs
+                )
+            except botocore.exceptions.ClientError as oops:
+                perm_error = is_permission_error(oops)
+                if perm_error:
+                    raise PermissionError(perm_error)
+                raise oops
             for item in response['Items']:
                 yield deserialize(item['key']), deserialize(item['value'])
             start_key = response.get("LastEvaluatedKey")
@@ -198,7 +228,13 @@ class DynamoDictionary(object):
                 } for key in keys
             ]
         }
-        res = self.client.batch_write_item(RequestItems=request_items)
+        try:
+            res = self.client.batch_write_item(RequestItems=request_items)
+        except botocore.exceptions.ClientError as oops: 
+            perm_error = is_permission_error(oops)
+            if perm_error:
+                raise PermissionError(perm_error)
+            raise
 
 
 def main():
