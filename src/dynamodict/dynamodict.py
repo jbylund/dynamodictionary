@@ -2,6 +2,7 @@
 """a class that acts a little like a dictionary that uses dynamo as a backing"""
 # std imports
 import base64
+import logging
 import sys
 import time
 
@@ -10,9 +11,11 @@ import boto3
 import botocore.exceptions
 import cbor2
 
-
 KEY_ATTR_NAME = "k"
 VAL_ATTR_NAME = "v"
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 def serialize(obj):
     return base64.b64encode(cbor2.dumps(obj))
@@ -109,7 +112,7 @@ class DynamoDictionary(object):
                         raise PermissionError(perm_error)
                     raise
                 else:
-                    print("Over rate limit, backing off!", file=sys.stderr)
+                    logger.info("Over rate limit for table %s, backing off!", self.table_name)
                     time.sleep(0.1 * 2**i)
         else:
             raise Exception("Tried 5 times could not write item!")
@@ -244,21 +247,3 @@ class DynamoDictionary(object):
             if perm_error:
                 raise PermissionError(perm_error)
             raise
-
-
-def main():
-    d = DynamoDictionary("footable")
-    d['foo'] = 'bar'
-    print(len(d))
-    print(list(d.items()))
-    print(iter(d.items()))
-    print(iter(d.values()))
-    for val in d.values():
-        print(val)
-    print(d['foo'])
-    print(d.pop('foo'))
-    print(len(d))
-
-
-if "__main__" == __name__:
-    main()
