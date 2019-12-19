@@ -10,15 +10,21 @@ import boto3
 import botocore.exceptions
 import cbor2
 
-# user imports
 
+KEY_ATTR_NAME = "k"
+VAL_ATTR_NAME = "v"
 
 def serialize(obj):
     return base64.b64encode(cbor2.dumps(obj))
 
 
 def deserialize(obj):
+    try:
+        obj = obj.value
+    except AttributeError:
+        pass
     return cbor2.loads(base64.b64decode(obj))
+
 
 
 def is_permission_error(oops):
@@ -46,7 +52,7 @@ class DynamoDictionary(object):
         self.conn = boto3.resource('dynamodb', region_name='us-east-1')
         self.table = self.conn.Table(self.table_name)
         try:
-            self.table.get_item(Key={'key': "test"})
+            self.table.get_item(Key={KEY_ATTR_NAME: serialize("xxx")})
         except botocore.exceptions.ClientError as oops:
             perm_error = is_permission_error(oops)
             if perm_error:
@@ -61,13 +67,13 @@ class DynamoDictionary(object):
             TableName=self.table_name,
             AttributeDefinitions=[
                 {
-                    'AttributeName': 'key',
-                    'AttributeType': 'S',
+                    'AttributeName': KEY_ATTR_NAME,
+                    'AttributeType': 'B',
                 }
             ],
             KeySchema=[
                 {
-                    'AttributeName': 'key',
+                    'AttributeName': KEY_ATTR_NAME,
                     'KeyType': 'HASH',
                 }
             ],
@@ -83,10 +89,10 @@ class DynamoDictionary(object):
 
     def __getitem__(self, key):
         """x.__getitem__(y) <==> x[y]"""
-        got = self.table.get_item(Key={'key': serialize(key)})
+        got = self.table.get_item(Key={KEY_ATTR_NAME: serialize(key)})
         if 'Item' not in got:
             raise KeyError(key)
-        return deserialize(got['Item']['value'])
+        return deserialize(got['Item'][VAL_ATTR_NAME])
 
     def __setitem__(self, key, value):
         """x.__setitem__(i, y) <==> x[i]=y"""
@@ -94,7 +100,7 @@ class DynamoDictionary(object):
         sval = serialize(value)
         for i in range(5):
             try:
-                self.table.put_item(Item={'key': skey, 'value': sval})
+                self.table.put_item(Item={KEY_ATTR_NAME: skey, VAL_ATTR_NAME: sval})
                 break
             except botocore.exceptions.ClientError as oops:
                 if oops.response['Error']['Code'] != 'ProvisionedThroughputExceededException':
@@ -119,7 +125,7 @@ class DynamoDictionary(object):
         """D.pop(k[,d]) -> v, remove specified key and return the corresponding value.\nIf key is not found, d is returned if given, otherwise KeyError is raised"""
         try:
             deleted = self.table.delete_item(
-                Key={'key': serialize(key)},
+                Key={KEY_ATTR_NAME: serialize(key)},
                 ReturnValues='ALL_OLD'
             )
         except botocore.exceptions.ClientError as oops:
@@ -133,7 +139,7 @@ class DynamoDictionary(object):
             else:
                 raise KeyError(key)
         return deserialize(
-            deleted['Attributes']['value']
+            deleted['Attributes'][VAL_ATTR_NAME]
         )
 
     def iteritems(self):
@@ -156,7 +162,7 @@ class DynamoDictionary(object):
                     raise PermissionError(perm_error)
                 raise oops
             for item in response['Items']:
-                yield deserialize(item['key']), deserialize(item['value'])
+                yield deserialize(item[KEY_ATTR_NAME]), deserialize(item[VAL_ATTR_NAME])
             start_key = response.get("LastEvaluatedKey")
             if start_key is None:
                 break
@@ -223,8 +229,8 @@ class DynamoDictionary(object):
                 {
                     "DeleteRequest": {
                         "Key": {
-                            "key": {
-                                "S": serialize(key)
+                            KEY_ATTR_NAME: {
+                                "B": serialize(key)
                             }
                         }
                     }
