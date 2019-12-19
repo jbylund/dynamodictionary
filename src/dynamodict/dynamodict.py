@@ -20,6 +20,7 @@ def serialize(obj):
 def deserialize(obj):
     return cbor2.loads(base64.b64decode(obj))
 
+
 def is_permission_error(oops):
     if getattr(oops, 'response', {}).get('Error', {}).get('Code') == 'AccessDeniedException':
         return {
@@ -28,8 +29,10 @@ def is_permission_error(oops):
         }
     return False
 
+
 class PermissionError(Exception):
     pass
+
 
 class DynamoDictionary(object):
     """a class that acts a little like a dictionary that uses dynamo as a backing"""
@@ -89,7 +92,7 @@ class DynamoDictionary(object):
         """x.__setitem__(i, y) <==> x[i]=y"""
         skey = serialize(key)
         sval = serialize(value)
-        for i in xrange(5):
+        for i in range(5):
             try:
                 self.table.put_item(Item={'key': skey, 'value': sval})
                 break
@@ -100,7 +103,7 @@ class DynamoDictionary(object):
                         raise PermissionError(perm_error)
                     raise
                 else:
-                    print >> sys.stderr, "Over rate limit, backing off!"
+                    print("Over rate limit, backing off!", file=sys.stderr)
                     time.sleep(0.1 * 2**i)
         else:
             raise Exception("Tried 5 times could not write item!")
@@ -230,7 +233,7 @@ class DynamoDictionary(object):
         }
         try:
             res = self.client.batch_write_item(RequestItems=request_items)
-        except botocore.exceptions.ClientError as oops: 
+        except botocore.exceptions.ClientError as oops:
             perm_error = is_permission_error(oops)
             if perm_error:
                 raise PermissionError(perm_error)
@@ -240,15 +243,15 @@ class DynamoDictionary(object):
 def main():
     d = DynamoDictionary("footable")
     d['foo'] = 'bar'
-    print len(d)
-    print d.items()
-    print d.iteritems()
-    print d.itervalues()
-    for val in d.itervalues():
-        print val
-    print d['foo']
-    print d.pop('foo')
-    print len(d)
+    print(len(d))
+    print(list(d.items()))
+    print(iter(d.items()))
+    print(iter(d.values()))
+    for val in d.values():
+        print(val)
+    print(d['foo'])
+    print(d.pop('foo'))
+    print(len(d))
 
 
 if "__main__" == __name__:
