@@ -1,6 +1,6 @@
-import unittest
 import os
 import random
+import unittest
 from string import ascii_lowercase
 
 import dynamodict
@@ -44,7 +44,7 @@ class TestDynamodictionary(unittest.TestCase):
     def test_clear(self):
         self.mytable.clear()
         assert 0 == len(self.mytable)
-        for _ in xrange(100):
+        for _ in range(100):
             self.mytable[randstr()] = randstr()
         assert 100 == len(self.mytable)
         self.mytable.clear()
@@ -84,7 +84,7 @@ class TestDynamodictionary(unittest.TestCase):
     def test_len(self):
         self.mytable.clear()
         assert 0 == len(self.mytable)
-        for _ in xrange(20):
+        for _ in range(20):
             self.mytable[randstr()] = randstr()
         assert 20 == len(self.mytable)
         self.mytable.clear()
