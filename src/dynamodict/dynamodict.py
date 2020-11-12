@@ -17,6 +17,7 @@ VAL_ATTR_NAME = "v"
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 
+
 def serialize(obj):
     return base64.b64encode(cbor2.dumps(obj))
 
@@ -27,7 +28,6 @@ def deserialize(obj):
     except AttributeError:
         pass
     return cbor2.loads(base64.b64decode(obj))
-
 
 
 def is_permission_error(oops):
