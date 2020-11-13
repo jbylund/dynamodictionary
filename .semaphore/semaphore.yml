@@ -1,0 +1,41 @@
+version: v1.0
+name: Python
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+  containers:
+    - name: main
+      image: 'registry.hub.docker.com/jbylund/semci:latest'
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: pytest
+          commands:
+            - apt-get update > /dev/null
+            - apt-get install -y git > /dev/null
+            - checkout
+            - python -V
+            - python -m pip install --upgrade pip > /dev/null
+            - python -m pip install -r requirements.txt > /dev/null
+            - python -m pip install flake8 pytest > /dev/null
+            - python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+            - python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+            - python -m pip install . > /dev/null
+            - python -m pytest -vvv
+      prologue:
+        commands:
+          - echo prologue
+      epilogue:
+        always:
+          commands:
+            - echo always epilogue
+        on_pass:
+          commands:
+            - echo passed epilogue
+        on_fail:
+          commands:
+            - echo fail epilogue
+      secrets:
+        - name: AWS_CREDS

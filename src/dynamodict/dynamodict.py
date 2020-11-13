@@ -31,10 +31,10 @@ def deserialize(obj):
 
 
 def is_permission_error(oops):
-    if getattr(oops, 'response', {}).get('Error', {}).get('Code') == 'AccessDeniedException':
+    if getattr(oops, "response", {}).get("Error", {}).get("Code") == "AccessDeniedException":
         return {
-            'user': oops.response['Error']['Message'].split()[1].partition('/')[-1],
-            'action': oops.operation_name,
+            "user": oops.response["Error"]["Message"].split()[1].partition("/")[-1],
+            "action": oops.operation_name,
         }
     return False
 
@@ -45,14 +45,15 @@ class PermissionError(Exception):
 
 class DynamoDictionary(object):
     """a class that acts a little like a dictionary that uses dynamo as a backing"""
+
     empty_sentinel = object()
     default_read_units = 25 // 2
     default_write_units = 25 // 2
 
     def __init__(self, table_name, read_units=None, write_units=None):
         self.table_name = table_name
-        self.client = boto3.client('dynamodb', region_name='us-east-1')
-        self.conn = boto3.resource('dynamodb', region_name='us-east-1')
+        self.client = boto3.client("dynamodb", region_name="us-east-1")
+        self.conn = boto3.resource("dynamodb", region_name="us-east-1")
         self.table = self.conn.Table(self.table_name)
         try:
             self.table.get_item(Key={KEY_ATTR_NAME: serialize("xxx")})
@@ -70,20 +71,20 @@ class DynamoDictionary(object):
             TableName=self.table_name,
             AttributeDefinitions=[
                 {
-                    'AttributeName': KEY_ATTR_NAME,
-                    'AttributeType': 'B',
+                    "AttributeName": KEY_ATTR_NAME,
+                    "AttributeType": "B",
                 }
             ],
             KeySchema=[
                 {
-                    'AttributeName': KEY_ATTR_NAME,
-                    'KeyType': 'HASH',
+                    "AttributeName": KEY_ATTR_NAME,
+                    "KeyType": "HASH",
                 }
             ],
             ProvisionedThroughput={
-                'ReadCapacityUnits': read_units or self.default_read_units,
-                'WriteCapacityUnits': write_units or self.default_write_units,
-            }
+                "ReadCapacityUnits": read_units or self.default_read_units,
+                "WriteCapacityUnits": write_units or self.default_write_units,
+            },
         )
 
     def drop_table(self):
@@ -93,9 +94,9 @@ class DynamoDictionary(object):
     def __getitem__(self, key):
         """x.__getitem__(y) <==> x[y]"""
         got = self.table.get_item(Key={KEY_ATTR_NAME: serialize(key)})
-        if 'Item' not in got:
+        if "Item" not in got:
             raise KeyError(key)
-        return deserialize(got['Item'][VAL_ATTR_NAME])
+        return deserialize(got["Item"][VAL_ATTR_NAME])
 
     def __setitem__(self, key, value):
         """x.__setitem__(i, y) <==> x[i]=y"""
@@ -106,14 +107,14 @@ class DynamoDictionary(object):
                 self.table.put_item(Item={KEY_ATTR_NAME: skey, VAL_ATTR_NAME: sval})
                 break
             except botocore.exceptions.ClientError as oops:
-                if oops.response['Error']['Code'] != 'ProvisionedThroughputExceededException':
+                if oops.response["Error"]["Code"] != "ProvisionedThroughputExceededException":
                     perm_error = is_permission_error(oops)
                     if perm_error:
                         raise PermissionError(perm_error)
                     raise
                 else:
                     logger.info("Over rate limit for table %s, backing off!", self.table_name)
-                    time.sleep(0.1 * 2**i)
+                    time.sleep(0.1 * 2 ** i)
         else:
             raise Exception("Tried 5 times could not write item!")
 
@@ -127,23 +128,18 @@ class DynamoDictionary(object):
     def pop(self, key, default=empty_sentinel):
         """D.pop(k[,d]) -> v, remove specified key and return the corresponding value.\nIf key is not found, d is returned if given, otherwise KeyError is raised"""
         try:
-            deleted = self.table.delete_item(
-                Key={KEY_ATTR_NAME: serialize(key)},
-                ReturnValues='ALL_OLD'
-            )
+            deleted = self.table.delete_item(Key={KEY_ATTR_NAME: serialize(key)}, ReturnValues="ALL_OLD")
         except botocore.exceptions.ClientError as oops:
             perm_error = is_permission_error(oops)
             if perm_error:
                 raise PermissionError(perm_error)
             raise
-        if 'Attributes' not in deleted:
+        if "Attributes" not in deleted:
             if default is not self.empty_sentinel:
                 return default
             else:
                 raise KeyError(key)
-        return deserialize(
-            deleted['Attributes'][VAL_ATTR_NAME]
-        )
+        return deserialize(deleted["Attributes"][VAL_ATTR_NAME])
 
     def iteritems(self):
         """D.iteritems() -> an iterator over the (key, value) items of D"""
@@ -151,20 +147,18 @@ class DynamoDictionary(object):
         while True:
             kwargs = {
                 "Limit": 1000,
-                "Select": 'ALL_ATTRIBUTES',
+                "Select": "ALL_ATTRIBUTES",
             }
             if start_key:
-                kwargs['ExclusiveStartKey'] = start_key
+                kwargs["ExclusiveStartKey"] = start_key
             try:
-                response = self.table.scan(
-                    **kwargs
-                )
+                response = self.table.scan(**kwargs)
             except botocore.exceptions.ClientError as oops:
                 perm_error = is_permission_error(oops)
                 if perm_error:
                     raise PermissionError(perm_error)
                 raise oops
-            for item in response['Items']:
+            for item in response["Items"]:
                 yield deserialize(item[KEY_ATTR_NAME]), deserialize(item[VAL_ATTR_NAME])
             start_key = response.get("LastEvaluatedKey")
             if start_key is None:
@@ -176,7 +170,7 @@ class DynamoDictionary(object):
 
     def keys(self):
         """D.keys() -> list of D's keys"""
-        return [key for key, _ in self.iteritems()]
+        return {key for key, _ in self.iteritems()}
 
     def values(self):
         """D.values() -> list of D's values"""
@@ -227,19 +221,7 @@ class DynamoDictionary(object):
         if not keys:
             return
         # todo add retries and handle unprocessed items
-        request_items = {
-            self.table_name: [
-                {
-                    "DeleteRequest": {
-                        "Key": {
-                            KEY_ATTR_NAME: {
-                                "B": serialize(key)
-                            }
-                        }
-                    }
-                } for key in keys
-            ]
-        }
+        request_items = {self.table_name: [{"DeleteRequest": {"Key": {KEY_ATTR_NAME: {"B": serialize(key)}}}} for key in keys]}
         try:
             res = self.client.batch_write_item(RequestItems=request_items)
         except botocore.exceptions.ClientError as oops:
