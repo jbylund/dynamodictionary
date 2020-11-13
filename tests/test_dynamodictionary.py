@@ -30,10 +30,6 @@ class TestDynamodictionary(unittest.TestCase):
     def tearDown(self):
         self.mytable.clear()
 
-    def test_testing_right_thing(self):
-        # assert os.getcwd() in dynamodict.__file__
-        pass
-
     def test_construction(self):
         pass  # was constructed in setUpClass
 
@@ -97,7 +93,14 @@ class TestDynamodictionary(unittest.TestCase):
         assert len(indexes) == len(keys)
 
     def test_itervalues(self):
-        pass
+        unique_values = sorted(randstr() for _ in range(10))
+        for ival in unique_values:
+            self.mytable[randstr()] = ival
+        unseen_vals = set(unique_values)
+        for ival in self.mytable.values():
+            unseen_vals.remove(ival)
+        if unseen_vals:
+            raise AssertionError("There were values that were not seen")
 
     def test_keys(self):
         keys = sorted(randstr() for _ in range(10))
@@ -114,9 +117,6 @@ class TestDynamodictionary(unittest.TestCase):
         assert 20 == len(self.mytable)
 
     def test_multi_delete(self):
-        # maybe make a bunch of things
-        # delete half, verify that half is gone
-        # but the other half is still there
         keys_to_keep = sorted(randstr() for _ in range(10))
         keys_to_drop = sorted(randstr() for _ in range(10))
         for ikey in keys_to_keep + keys_to_drop:
