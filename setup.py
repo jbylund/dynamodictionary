@@ -13,5 +13,5 @@ setuptools.setup(
     package_dir={"dynamodict": "src/dynamodict"},
     packages=["dynamodict"],
     url="https://github.com/jbylund/dynamodictionary",
-    version="1.0.1",
+    version="1.0.2",
 )
