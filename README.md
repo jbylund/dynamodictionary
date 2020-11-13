@@ -1,4 +1,13 @@
-### dynamodictionary
+# dynamodictionary
+
+## Installing
+
+From github: `python -m pip install --upgrade git+https://git@github.com/jbylund/dynamodictionary.git`
+
+From pypi: `python -m pip install --upgrade dynamodictionary`
+
+
+## Example Use
 
 This package provides a dictionary like interface for interacting with dynamodb tables, example:
 
