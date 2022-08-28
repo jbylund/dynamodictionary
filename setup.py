@@ -9,9 +9,16 @@ setuptools.setup(
     author="Joe Bylund",
     description=description,
     install_requires=[
-        "cbor2",  # TODO: do I want to just use pickle?
         "boto3",
     ],
+    extras_require={
+        "dev": [
+            "black",
+            "isort",
+            "pre-commit",
+            "pylint",
+        ],
+    },
     long_description=description,
     name="dynamodictionary",
     package_dir={"dynamodict": "src/dynamodict"},
