@@ -11,8 +11,6 @@ import dynamodict
 if "site-packages" in dynamodict.__file__:
     raise AssertionError("import is wrong")
 
-random.seed(0)
-
 
 def randstr():
     return "".join(random.choice(ascii_lowercase) for _ in range(20))
@@ -22,13 +20,12 @@ class TestDynamodictionary(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cwd = os.getcwd()
-        # assert cwd in dynamodict.__file__
         cls.test_table_name = "test_" + randstr()
         cls.mytable = dynamodict.DynamoDictionary(cls.test_table_name)
 
     @classmethod
     def tearDownClass(cls):
-        pass
+        cls.mytable.client.delete_table(TableName=cls.test_table_name)
 
     def setUp(self):
         self.mytable.clear()
