@@ -12,6 +12,7 @@ import boto3
 import botocore.exceptions
 
 KEY_ATTR_NAME = "k"
+KEY_DATA_TYPE = "B"
 TTL_ATTR_NAME = "ttl"
 VAL_ATTR_NAME = "v"
 
@@ -74,7 +75,7 @@ class DynamoDictionary(object):
             AttributeDefinitions=[
                 {
                     "AttributeName": KEY_ATTR_NAME,
-                    "AttributeType": "B",
+                    "AttributeType": KEY_DATA_TYPE,
                 },
             ],
             KeySchema=[
@@ -226,10 +227,13 @@ class DynamoDictionary(object):
     def multi_delete(self, keys):
         if not keys:
             return
+        for ikey in keys:
+            self.pop(ikey)
+        return
         # todo add retries and handle unprocessed items
         table_operations = []
         for ikey in keys:
-            item_delete_request = {"DeleteRequest": {"Key": {KEY_ATTR_NAME: {"B": serialize(ikey)}}}}
+            item_delete_request = {"DeleteRequest": {"Key": {KEY_ATTR_NAME: {KEY_DATA_TYPE: serialize(ikey)}}}}
             table_operations.append(item_delete_request)
         try:
             res = self.client.batch_write_item(RequestItems={self.table_name: table_operations})
