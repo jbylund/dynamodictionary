@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # The "FORCE_COLOR" variable, when set to 1,
+  # tells Nox to colorize itself.
+  FORCE_COLOR: "1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    name: pre-commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: pre-commit/action@v2.0.0
+        with:
+          extra_args: --all-files --hook-stage=manual
+
+  tests-unix:
+    name: tests / ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
+
+    needs: [pre-commit]
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [Ubuntu]
+        python:
+          - 3.7
+          - 3.8
+          - 3.9
+          - "3.10"
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Setup
+        run: python -m pip install .["dev"]
+
+      # Main check
+      - name: Run unit tests
+        run: >-
+          nox -s test-${{ matrix.python }} --
+          -m unit
+          --verbose --numprocesses auto --showlocals
