@@ -1,0 +1,18 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 5d4843d9773a292cdb7967a16478be743a54beb6
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+-   repo: https://github.com/pycqa/isort
+    rev: 12cc5fbd67eebf92eb2213b03c07b138ae1fb448
+    hooks:
+    -   id: isort
+        name: isort
+-   repo: https://github.com/psf/black
+    rev: c0cc19b5b3371842d696875897bebefebd5e1596
+    hooks:
+    -   id: black
+        args:
+        - --line-length=132

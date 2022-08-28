@@ -11,7 +11,7 @@ increment_version: test
 	true
 
 test:
-	PYTHONPATH=$(shell pwd)/src/dynamodict python -m pytest -s -vvv 
+	PYTHONPATH=$(shell pwd)/src/dynamodict python -m pytest -s -vvv
 
 lint:
 	autopep8 --in-place --aggressive --max-line-length 132 $(shell find . -name "*.py")
