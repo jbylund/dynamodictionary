@@ -1,6 +1,6 @@
 import datetime
-import unittest
 import sys
+import unittest
 
 sys.path = ["./src"] + sys.path
 import dynamodict
