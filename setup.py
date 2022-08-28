@@ -15,8 +15,10 @@ setuptools.setup(
         "dev": [
             "black",
             "isort",
+            "nox",
             "pre-commit",
             "pylint",
+            "pytest",
         ],
     },
     long_description=description,

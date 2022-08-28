@@ -75,13 +75,13 @@ class DynamoDictionary(object):
                 {
                     "AttributeName": KEY_ATTR_NAME,
                     "AttributeType": "B",
-                }
+                },
             ],
             KeySchema=[
                 {
                     "AttributeName": KEY_ATTR_NAME,
                     "KeyType": "HASH",
-                }
+                },
             ],
             ProvisionedThroughput={
                 "ReadCapacityUnits": read_units or self.default_read_units,
@@ -227,9 +227,12 @@ class DynamoDictionary(object):
         if not keys:
             return
         # todo add retries and handle unprocessed items
-        request_items = {self.table_name: [{"DeleteRequest": {"Key": {KEY_ATTR_NAME: {"B": serialize(key)}}}} for key in keys]}
+        table_operations = []
+        for ikey in keys:
+            item_delete_request = {"DeleteRequest": {"Key": {KEY_ATTR_NAME: {"B": serialize(ikey)}}}}
+            table_operations.append(item_delete_request)
         try:
-            res = self.client.batch_write_item(RequestItems=request_items)
+            res = self.client.batch_write_item(RequestItems={self.table_name: table_operations})
         except botocore.exceptions.ClientError as oops:
             perm_error = is_permission_error(oops)
             if perm_error:
