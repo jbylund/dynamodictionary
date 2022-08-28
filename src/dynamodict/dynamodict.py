@@ -3,15 +3,16 @@
 # std imports
 import base64
 import logging
+import pickle
 import sys
 import time
 
 # site imports
 import boto3
 import botocore.exceptions
-import cbor2
 
 KEY_ATTR_NAME = "k"
+TTL_ATTR_NAME = "ttl"
 VAL_ATTR_NAME = "v"
 
 logging.basicConfig()
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def serialize(obj):
-    return base64.b64encode(cbor2.dumps(obj))
+    return base64.b64encode(pickle.dumps(obj))
 
 
 def deserialize(obj):
@@ -27,7 +28,7 @@ def deserialize(obj):
         obj = obj.value
     except AttributeError:
         pass
-    return cbor2.loads(base64.b64decode(obj))
+    return pickle.loads(base64.b64decode(obj))
 
 
 def is_permission_error(oops):
@@ -50,11 +51,12 @@ class DynamoDictionary(object):
     default_read_units = 25 // 2
     default_write_units = 25 // 2
 
-    def __init__(self, table_name, read_units=None, write_units=None):
+    def __init__(self, table_name, read_units=None, write_units=None, ttl=None):
         self.table_name = table_name
-        self.client = boto3.client("dynamodb", region_name="us-east-1")
         self.conn = boto3.resource("dynamodb", region_name="us-east-1")
+        self.client = self.conn.meta.client
         self.table = self.conn.Table(self.table_name)
+        self.ttl = ttl
         try:
             self.table.get_item(Key={KEY_ATTR_NAME: serialize("xxx")})
         except botocore.exceptions.ClientError as oops:
@@ -100,11 +102,15 @@ class DynamoDictionary(object):
 
     def __setitem__(self, key, value):
         """x.__setitem__(i, y) <==> x[i]=y"""
-        skey = serialize(key)
-        sval = serialize(value)
+        to_put = {
+            KEY_ATTR_NAME: serialize(key),
+            VAL_ATTR_NAME: serialize(value),
+        }
+        if self.ttl:
+            to_put[TTL_ATTR_NAME] = time.time() + self.ttl
         for i in range(5):
             try:
-                self.table.put_item(Item={KEY_ATTR_NAME: skey, VAL_ATTR_NAME: sval})
+                self.table.put_item(Item=to_put)
                 break
             except botocore.exceptions.ClientError as oops:
                 if oops.response["Error"]["Code"] != "ProvisionedThroughputExceededException":
@@ -114,7 +120,7 @@ class DynamoDictionary(object):
                     raise
                 else:
                     logger.info("Over rate limit for table %s, backing off!", self.table_name)
-                    time.sleep(0.1 * 2 ** i)
+                    time.sleep(0.1 * 2**i)
         else:
             raise Exception("Tried 5 times could not write item!")
 
