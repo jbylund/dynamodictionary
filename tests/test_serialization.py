@@ -2,8 +2,9 @@ import datetime
 import sys
 import unittest
 
-sys.path = ["./src"] + sys.path
-import dynamodict
+if True:
+    sys.path = ["./src"] + sys.path
+    import dynamodict
 
 if "site-packages" in dynamodict.__file__:
     raise AssertionError("import is wrong")

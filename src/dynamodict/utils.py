@@ -1,6 +1,6 @@
-import socket
-import logging
 import functools
+import logging
+import socket
 import time
 
 PATCHES_HOLDER = {}

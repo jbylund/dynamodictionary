@@ -11,8 +11,9 @@ increment_version: test
 	true
 
 test:
-	PYTHONPATH=$(shell pwd)/src/dynamodict python -m pytest -s -vvv
+	python -m nox -s -vvv
 
 lint:
 	rm -rf build .nox
+	python -m isort $(shell find . -name "*.py")
 	python -m autopep8 --in-place --aggressive --max-line-length 132 $(shell find . -name "*.py")
