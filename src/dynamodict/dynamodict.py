@@ -6,6 +6,7 @@ import logging
 import pickle
 import sys
 import time
+from decimal import Decimal
 
 # site imports
 import boto3
@@ -67,6 +68,20 @@ class DynamoDictionary(object):
             # check if it's a table does not exist error
             self.create_table(read_units=read_units, write_units=write_units)
             self.table.wait_until_exists()
+            try:
+                # ensure the table has ttl enabled and pointing to the right attribute
+                self.client.update_time_to_live(
+                    TableName=self.table_name,
+                    TimeToLiveSpecification={
+                        "Enabled": True,
+                        "AttributeName": TTL_ATTR_NAME,
+                    },
+                )
+            except botocore.exceptions.ClientError as oops:
+                if "TimeToLive is already enabled" in str(oops):
+                    pass
+                else:
+                    raise
 
     def create_table(self, read_units=None, write_units=None):
         """create a table in case it doesn't exist"""
@@ -108,7 +123,8 @@ class DynamoDictionary(object):
             VAL_ATTR_NAME: serialize(value),
         }
         if self.ttl:
-            to_put[TTL_ATTR_NAME] = time.time() + self.ttl
+            expiry = time.time() + self.ttl
+            to_put[TTL_ATTR_NAME] = Decimal(expiry)
         for i in range(5):
             try:
                 self.table.put_item(Item=to_put)

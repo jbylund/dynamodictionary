@@ -155,3 +155,10 @@ class TestDynamodictionary(unittest.TestCase):
         values = self.mytable.values()
         assert isinstance(values, list)
         assert sorted(values) == sorted(keys)
+
+    def test_ttl(self):
+        try:
+            table_with_ttl = dynamodict.DynamoDictionary(randstr(), ttl=10)
+            table_with_ttl["foo"] = "bar"
+        finally:
+            table_with_ttl.client.delete_table(TableName=table_with_ttl.table_name)
