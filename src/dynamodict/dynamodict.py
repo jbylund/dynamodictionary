@@ -1,5 +1,6 @@
 #!/usr/bin/python
 """a class that acts a little like a dictionary that uses dynamo as a backing"""
+
 # std imports
 import base64
 import logging
