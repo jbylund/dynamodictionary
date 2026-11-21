@@ -52,7 +52,30 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_REGION: us-east-1
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TEST_TABLE_PREFIX: test_${{ github.run_id }}_${{ strategy.job-index }}_
         run: pytest --verbose --durations=5
+
+      # Runs on failure and cancellation too, so killed jobs don't leak tables
+      - name: Delete leftover test tables
+        if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_REGION: us-east-1
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TEST_TABLE_PREFIX: test_${{ github.run_id }}_${{ strategy.job-index }}_
+        run: |
+          python - <<'PY'
+          import os
+          import boto3
+
+          client = boto3.client("dynamodb", region_name="us-east-1")
+          prefix = os.environ["TEST_TABLE_PREFIX"]
+          for page in client.get_paginator("list_tables").paginate():
+              for name in page["TableNames"]:
+                  if name.startswith(prefix):
+                      print("deleting leaked table", name)
+                      client.delete_table(TableName=name)
+          PY
 
   publish:
     name: publish to PyPI

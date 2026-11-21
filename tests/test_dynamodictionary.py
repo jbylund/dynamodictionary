@@ -5,6 +5,8 @@ import sys
 import unittest
 from string import ascii_lowercase
 
+import boto3
+
 if True:
     sys.path = ["./src"] + sys.path
     import dynamodict
@@ -17,16 +19,34 @@ def randstr():
     return "".join(random.choice(ascii_lowercase) for _ in range(20))
 
 
+# CI sets a per-job prefix so leftover tables can be swept up even if a job is cancelled
+TABLE_PREFIX = os.environ.get("TEST_TABLE_PREFIX", "test_")
+
+
+def make_table_name():
+    return TABLE_PREFIX + randstr()
+
+
+def delete_table_quietly(table_name):
+    """Delete a table, tolerating it being missing or still being created."""
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    for _ in range(3):
+        try:
+            client.delete_table(TableName=table_name)
+            return
+        except client.exceptions.ResourceNotFoundException:
+            return
+        except client.exceptions.ResourceInUseException:
+            client.get_waiter("table_exists").wait(TableName=table_name)
+
+
 class TestDynamodictionary(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cwd = os.getcwd()
-        cls.test_table_name = "test_" + randstr()
+        cls.test_table_name = make_table_name()
+        # register cleanup first: it runs even if the constructor fails after creating the table
+        cls.addClassCleanup(delete_table_quietly, cls.test_table_name)
         cls.mytable = dynamodict.DynamoDictionary(cls.test_table_name)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.mytable.client.delete_table(TableName=cls.test_table_name)
 
     def setUp(self):
         self.mytable.clear()
@@ -157,8 +177,7 @@ class TestDynamodictionary(unittest.TestCase):
         assert sorted(values) == sorted(keys)
 
     def test_ttl(self):
-        try:
-            table_with_ttl = dynamodict.DynamoDictionary(randstr(), ttl=10)
-            table_with_ttl["foo"] = "bar"
-        finally:
-            table_with_ttl.client.delete_table(TableName=table_with_ttl.table_name)
+        table_name = make_table_name()
+        self.addCleanup(delete_table_quietly, table_name)
+        table_with_ttl = dynamodict.DynamoDictionary(table_name, ttl=10)
+        table_with_ttl["foo"] = "bar"
