@@ -73,8 +73,12 @@ jobs:
           for page in client.get_paginator("list_tables").paginate():
               for name in page["TableNames"]:
                   if name.startswith(prefix):
-                      print("deleting leaked table", name)
-                      client.delete_table(TableName=name)
+                      # tables the tests already deleted can linger in the listing as DELETING
+                      try:
+                          client.delete_table(TableName=name)
+                          print("deleted leaked table", name)
+                      except (client.exceptions.ResourceNotFoundException, client.exceptions.ResourceInUseException):
+                          print("table already being deleted", name)
           PY
 
   publish:
