@@ -1,19 +1,14 @@
-.PHONY: upload test
+.PHONY: test lint clean
 
-upload: lint increment_version test
-	/bin/rm -rvf dynamodictionary.egg-info/ dist/ build/ prof/
-	python setup.py sdist bdist_wheel
-	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-	twine upload dist/*
-	/bin/rm -rvf dynamodictionary.egg-info/ dist/ build/ prof/
+# Releases are published by CI: bump the version in setup.py and src/dynamodict/__init__.py,
+# and merge to main (see .github/workflows/ci.yml).
 
-increment_version: test
-	true
-
+# Needs AWS credentials: the tests create and delete real DynamoDB tables.
 test:
-	python -m nox -s -vvv
+	python -m pytest -vvv --durations=5
 
 lint:
-	rm -rf build .nox
-	python -m isort $(shell find . -name "*.py")
-	python -m autopep8 --in-place --aggressive --max-line-length 132 $(shell find . -name "*.py")
+	pre-commit run --all-files
+
+clean:
+	rm -rf build dist prof dynamodictionary.egg-info/ .pytest_cache
